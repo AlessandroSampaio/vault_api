@@ -24,7 +24,7 @@ O repositório foi inicializado com o template padrão do `dotnet new webapi` (W
 
 ## Decisões de modelagem (resolvidas no brainstorming)
 
-1. **Precificação**: catálogo com preço base (Produto/Módulo/Variante) + override por item de contrato. Item sem override herda do catálogo; com override, o override vence.
+1. **Precificação**: catálogo com preço base (Produto/Módulo/Variante) + override por item de contrato. Item sem override herda do catálogo; com override, o override vence. Alterações no preço de catálogo geram registro append-only em `HistoricoPrecoCatalogo` (auditoria/relatório de curva de preço) — ver seção "Histórico de preço de catálogo".
 2. **Tipo de unidade**: enum fixo no código (`Servidor`, `Estacao`, `PDA`, `PDV`). Não é tabela cadastrável — muda raro, simplicidade > flexibilidade de runtime aqui.
 3. **Variantes de módulo**: entidade própria `ModuloVariante` (ex.: TEF-CliSiTef, TEF-Sitef), cada uma com valor adicional por unidade. Cobre o caso TEF hoje e casos futuros análogos sem precisar redesenhar Módulo.
 4. **Autenticação**: ASP.NET Identity + JWT emitido pela própria API. Sem provedor externo no v1.
@@ -58,6 +58,7 @@ Clean Architecture, 4 projetos + testes, sem CQRS/MediatR formal (domínio de pr
 - **ContratoItemUnidade**: Id, ContratoItemId, TipoUnidade, Quantidade. Tabela filha relacional (em vez de dicionário serializado) para permitir query direta por tipo de unidade.
 - **ContratoItemModulo**: Id, ContratoItemId, ModuloId, ModuloVarianteId (nullable), Ativo, ValorOverride (nullable).
 - **Licenca**: Id, ContratoItemId, Serial (texto/bytea — conteúdo criptografado), Algoritmo (texto, ex.: "AES-256-v1" — padrão real definido depois), DataEmissao, Status (enum: Ativa/Revogada). 1:N com ContratoItem — histórico completo, nunca sobrescrito.
+- **HistoricoPrecoCatalogo**: Id, EntidadeTipo (enum: Produto/Modulo/ModuloVariante), EntidadeId, TipoValor (enum: Adesao/Mensalidade/AdicionalPorUnidade), ValorAnterior, ValorNovo, DataAlteracao, UsuarioId. Append-only, nunca alterado/apagado.
 
 ### Resolução de preço
 
@@ -72,6 +73,14 @@ Clean Architecture, 4 projetos + testes, sem CQRS/MediatR formal (domínio de pr
 Cada `ContratoItem` (produto dentro de um contrato) gera uma `Licenca` — serial criptografado do conteúdo daquele item (quantidade por tipo de unidade, módulos/variantes ativos). Padrão de criptografia será definido depois; a coluna `Serial` fica como `bytea`/texto opaco para acomodar qualquer algoritmo futuro sem migration adicional, e `Algoritmo` registra qual foi usado em cada emissão (permite trocar de algoritmo sem invalidar histórico).
 
 Histórico versionado: toda alteração relevante do `ContratoItem` (quantidade, módulo ativado/inativado, variante trocada) gera nova `Licenca` e marca a anterior como `Revogada` — nunca sobrescreve. Necessário para suporte/auditoria saber qual serial estava válido em cada momento. Geração do serial em si (a criptografia) fica fora de escopo do v1 — só a modelagem/tabela e o gatilho de "quando gerar nova versão" entram agora; o serviço de emissão é implementado quando o padrão de criptografia for definido.
+
+## Histórico de preço de catálogo
+
+Preço "congelado" por contrato já é coberto pelo override em `ContratoItem`/`ContratoItemModulo` (quando `Fixo` está ativo, o contrato não sofre mudança mesmo que o catálogo mude depois) — isso não muda.
+
+O que faltava: rastrear a evolução do preço de catálogo em si (Produto/Módulo/Variante), para relatórios de curva de preço ao longo de um período T. Solução: `Produto`/`Modulo`/`ModuloVariante` mantêm a coluna de preço atual como está hoje (leitura direta e rápida, sem join, pro `PricingResolver` continuar puro). Toda alteração dessas colunas gera um registro append-only em `HistoricoPrecoCatalogo` (valor anterior, valor novo, quando, quem alterou). Relatórios de curva de preço consultam esse histórico; cálculo de contrato usa a coluna atual — sem impacto de performance no caminho quente.
+
+Gravação do histórico fica a cargo do service de atualização de Produto/Módulo/Variante em Application (não trigger de banco) — mantém a regra visível em código e testável.
 
 ## Autenticação e autorização
 
@@ -103,7 +112,7 @@ Histórico versionado: toda alteração relevante do `ContratoItem` (quantidade,
 ## Fora de escopo (v1)
 
 - Algoritmo de criptografia da Licenca — apenas a tabela/modelagem e o gatilho de regeneração entram no v1; o serviço de emissão real do serial é implementado quando o padrão for definido.
-- Tabela de preço versionada por vigência/data (reajuste anual) — mencionada como alternativa mas não escolhida; pode ser revisitada depois se necessário.
+- Tabela de preço com vigência futura programável (reajuste automático numa data agendada) — o que entrou no v1 foi só o histórico append-only de alterações (`HistoricoPrecoCatalogo`), não agendamento de preço futuro. Pode ser revisitado depois se necessário.
 - TipoUnidade cadastrável via banco — fica fixo em enum até haver necessidade real de extensão em runtime.
 - Provedor de identidade externo (Auth0/Keycloak/Azure AD B2C).
 - CQRS/MediatR — services simples por ora.
