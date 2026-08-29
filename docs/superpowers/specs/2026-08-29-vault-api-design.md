@@ -57,6 +57,7 @@ Clean Architecture, 4 projetos + testes, sem CQRS/MediatR formal (domínio de pr
 - **ContratoItem**: Id, ContratoId, ProdutoId, ValorAdesaoOverride (nullable), ValorMensalidadeOverride (nullable), TipoDesconto (nullable, enum Fixo/Percentual), ValorDesconto (nullable).
 - **ContratoItemUnidade**: Id, ContratoItemId, TipoUnidade, Quantidade. Tabela filha relacional (em vez de dicionário serializado) para permitir query direta por tipo de unidade.
 - **ContratoItemModulo**: Id, ContratoItemId, ModuloId, ModuloVarianteId (nullable), Ativo, ValorOverride (nullable).
+- **Licenca**: Id, ContratoItemId, Serial (texto/bytea — conteúdo criptografado), Algoritmo (texto, ex.: "AES-256-v1" — padrão real definido depois), DataEmissao, Status (enum: Ativa/Revogada). 1:N com ContratoItem — histórico completo, nunca sobrescrito.
 
 ### Resolução de preço
 
@@ -65,6 +66,12 @@ Clean Architecture, 4 projetos + testes, sem CQRS/MediatR formal (domínio de pr
 1. Base = preço de catálogo do Produto + soma dos preços de Módulo/Variante ativos, multiplicado pela quantidade de cada `TipoUnidade` (via `ContratoItemUnidade`).
 2. Se `ContratoItem` (ou `ContratoItemModulo`) tiver override: `Fixo` substitui o valor calculado; `Percentual`/`Valor` aplicam desconto sobre a base.
 3. Resultado é sempre calculado em runtime a partir do catálogo + overrides — nunca persistido como valor final fixo, exceto no próprio override quando explícito.
+
+## Licenciamento
+
+Cada `ContratoItem` (produto dentro de um contrato) gera uma `Licenca` — serial criptografado do conteúdo daquele item (quantidade por tipo de unidade, módulos/variantes ativos). Padrão de criptografia será definido depois; a coluna `Serial` fica como `bytea`/texto opaco para acomodar qualquer algoritmo futuro sem migration adicional, e `Algoritmo` registra qual foi usado em cada emissão (permite trocar de algoritmo sem invalidar histórico).
+
+Histórico versionado: toda alteração relevante do `ContratoItem` (quantidade, módulo ativado/inativado, variante trocada) gera nova `Licenca` e marca a anterior como `Revogada` — nunca sobrescreve. Necessário para suporte/auditoria saber qual serial estava válido em cada momento. Geração do serial em si (a criptografia) fica fora de escopo do v1 — só a modelagem/tabela e o gatilho de "quando gerar nova versão" entram agora; o serviço de emissão é implementado quando o padrão de criptografia for definido.
 
 ## Autenticação e autorização
 
@@ -95,6 +102,7 @@ Clean Architecture, 4 projetos + testes, sem CQRS/MediatR formal (domínio de pr
 
 ## Fora de escopo (v1)
 
+- Algoritmo de criptografia da Licenca — apenas a tabela/modelagem e o gatilho de regeneração entram no v1; o serviço de emissão real do serial é implementado quando o padrão for definido.
 - Tabela de preço versionada por vigência/data (reajuste anual) — mencionada como alternativa mas não escolhida; pode ser revisitada depois se necessário.
 - TipoUnidade cadastrável via banco — fica fixo em enum até haver necessidade real de extensão em runtime.
 - Provedor de identidade externo (Auth0/Keycloak/Azure AD B2C).
