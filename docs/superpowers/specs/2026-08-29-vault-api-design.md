@@ -24,7 +24,7 @@ O repositório foi inicializado com o template padrão do `dotnet new webapi` (W
 
 ## Decisões de modelagem (resolvidas no brainstorming)
 
-1. **Precificação**: catálogo com preço base (Produto/Módulo/Variante) + override por item de contrato. Item sem override herda do catálogo; com override, o override vence. Alterações no preço de catálogo geram registro append-only em `HistoricoPrecoCatalogo` (auditoria/relatório de curva de preço) — ver seção "Histórico de preço de catálogo".
+1. **Precificação**: catálogo com preço base (Produto por tipo de unidade via `ProdutoPrecoUnidade`, Módulo flat, Variante por unidade) + override por item de contrato. Item sem override herda do catálogo; com override, o override vence. Alterações no preço de catálogo geram registro append-only em `HistoricoPrecoCatalogo` (auditoria/relatório de curva de preço) — ver seção "Histórico de preço de catálogo".
 2. **Tipo de unidade**: enum fixo no código (`Servidor`, `Estacao`, `PDA`, `PDV`). Não é tabela cadastrável — muda raro, simplicidade > flexibilidade de runtime aqui.
 3. **Variantes de módulo**: entidade própria `ModuloVariante` (ex.: TEF-CliSiTef, TEF-Sitef), cada uma com valor adicional por unidade. Cobre o caso TEF hoje e casos futuros análogos sem precisar redesenhar Módulo.
 4. **Autenticação**: ASP.NET Identity + JWT emitido pela própria API. Sem provedor externo no v1.
@@ -49,24 +49,27 @@ Clean Architecture, 4 projetos + testes, sem CQRS/MediatR formal (domínio de pr
 - **Usuario** (Identity, `IdentityUser<Guid>` customizado): Id, Nome, Email, Nivel (enum Admin/Revenda/Usuario), RevendaId (nullable).
 - **Revenda**: Id, Nome, CNPJ, Ativo.
 - **Cliente**: Id, Nome, CNPJ, RevendaId (nullable).
-- **Produto**: Id, Nome, Descricao, ValorAdesaoBase, ValorMensalidadeBase, Ativo.
-- **Modulo**: Id, ProdutoId, Nome, ValorAdesaoBase (nullable — null = incluso sem custo extra), ValorMensalidadeBase (nullable), Ativo/Inativo.
-- **ModuloVariante**: Id, ModuloId, Nome, ValorAdicionalPorUnidade.
+- **Produto**: Id, Nome, Descricao, Ativo. (Preço não fica aqui — varia por tipo de unidade, ver `ProdutoPrecoUnidade`.)
+- **ProdutoPrecoUnidade**: Id, ProdutoId, TipoUnidade, ValorAdesao, ValorMensalidade. Preço de catálogo do produto varia por tipo de unidade (servidor, estação, PDA, PDV cada um com valor próprio) — cobre literalmente "3 servidores/estação, 2 PDA, 5 PDV, cada um com valor diferente".
+- **Modulo**: Id, ProdutoId, Nome, ValorAdesaoBase (nullable — null = incluso sem custo extra), ValorMensalidadeBase (nullable), Ativo/Inativo. Preço de módulo é flat (não varia por unidade) — só a variante tem cobrança por unidade.
+- **ModuloVariante**: Id, ModuloId, Nome, TipoUnidadeAplicavel (enum TipoUnidade — a qual tipo de unidade o adicional se aplica, ex.: PDV para TEF), ValorAdicionalPorUnidade.
 - **TipoUnidade** (enum): Servidor, Estacao, PDA, PDV.
 - **Contrato**: Id, ClienteId, RevendaId (nullable, snapshot no momento da criação — não segue mudança futura de revenda do cliente), Ativo, DataInicio, DataFim (nullable).
 - **ContratoItem**: Id, ContratoId, ProdutoId, ValorAdesaoOverride (nullable), ValorMensalidadeOverride (nullable), TipoDesconto (nullable, enum Fixo/Percentual), ValorDesconto (nullable).
 - **ContratoItemUnidade**: Id, ContratoItemId, TipoUnidade, Quantidade. Tabela filha relacional (em vez de dicionário serializado) para permitir query direta por tipo de unidade.
 - **ContratoItemModulo**: Id, ContratoItemId, ModuloId, ModuloVarianteId (nullable), Ativo, ValorOverride (nullable).
 - **Licenca**: Id, ContratoItemId, Serial (texto/bytea — conteúdo criptografado), Algoritmo (texto, ex.: "AES-256-v1" — padrão real definido depois), DataEmissao, Status (enum: Ativa/Revogada). 1:N com ContratoItem — histórico completo, nunca sobrescrito.
-- **HistoricoPrecoCatalogo**: Id, EntidadeTipo (enum: Produto/Modulo/ModuloVariante), EntidadeId, TipoValor (enum: Adesao/Mensalidade/AdicionalPorUnidade), ValorAnterior, ValorNovo, DataAlteracao, UsuarioId. Append-only, nunca alterado/apagado.
+- **HistoricoPrecoCatalogo**: Id, EntidadeTipo (enum: ProdutoPrecoUnidade/Modulo/ModuloVariante), EntidadeId, TipoValor (enum: Adesao/Mensalidade/AdicionalPorUnidade), ValorAnterior, ValorNovo, DataAlteracao, UsuarioId. Append-only, nunca alterado/apagado.
 
 ### Resolução de preço
 
 `PricingResolver` (Application, puro, sem I/O) calcula o valor final de um `ContratoItem`:
 
-1. Base = preço de catálogo do Produto + soma dos preços de Módulo/Variante ativos, multiplicado pela quantidade de cada `TipoUnidade` (via `ContratoItemUnidade`).
-2. Se `ContratoItem` (ou `ContratoItemModulo`) tiver override: `Fixo` substitui o valor calculado; `Percentual`/`Valor` aplicam desconto sobre a base.
-3. Resultado é sempre calculado em runtime a partir do catálogo + overrides — nunca persistido como valor final fixo, exceto no próprio override quando explícito.
+1. Base do produto = para cada linha em `ContratoItemUnidade` (TipoUnidade + Quantidade), busca `ProdutoPrecoUnidade` do mesmo TipoUnidade e multiplica preço × quantidade. Soma de todas as linhas = subtotal do produto.
+2. Base dos módulos ativos = soma do valor flat de cada `Modulo` ativo (`ContratoItemModulo.Ativo`); se o módulo tem `ModuloVarianteId` selecionada, soma também `ValorAdicionalPorUnidade` da variante × quantidade do `TipoUnidadeAplicavel` daquela variante (buscada em `ContratoItemUnidade`).
+3. Base total do item = subtotal do produto + subtotal dos módulos.
+4. Se `ContratoItem` (ou `ContratoItemModulo`, individualmente) tiver override: `Fixo` substitui o valor calculado; `Percentual`/`Valor` aplicam desconto sobre a base.
+5. Resultado é sempre calculado em runtime a partir do catálogo + overrides — nunca persistido como valor final fixo, exceto no próprio override quando explícito.
 
 ## Licenciamento
 
@@ -78,9 +81,9 @@ Histórico versionado: toda alteração relevante do `ContratoItem` (quantidade,
 
 Preço "congelado" por contrato já é coberto pelo override em `ContratoItem`/`ContratoItemModulo` (quando `Fixo` está ativo, o contrato não sofre mudança mesmo que o catálogo mude depois) — isso não muda.
 
-O que faltava: rastrear a evolução do preço de catálogo em si (Produto/Módulo/Variante), para relatórios de curva de preço ao longo de um período T. Solução: `Produto`/`Modulo`/`ModuloVariante` mantêm a coluna de preço atual como está hoje (leitura direta e rápida, sem join, pro `PricingResolver` continuar puro). Toda alteração dessas colunas gera um registro append-only em `HistoricoPrecoCatalogo` (valor anterior, valor novo, quando, quem alterou). Relatórios de curva de preço consultam esse histórico; cálculo de contrato usa a coluna atual — sem impacto de performance no caminho quente.
+O que faltava: rastrear a evolução do preço de catálogo em si (`ProdutoPrecoUnidade`/`Modulo`/`ModuloVariante`), para relatórios de curva de preço ao longo de um período T. Solução: essas entidades mantêm a coluna de preço atual como está (leitura direta e rápida, sem join, pro `PricingResolver` continuar puro). Toda alteração dessas colunas gera um registro append-only em `HistoricoPrecoCatalogo` (valor anterior, valor novo, quando, quem alterou). Relatórios de curva de preço consultam esse histórico; cálculo de contrato usa a coluna atual — sem impacto de performance no caminho quente.
 
-Gravação do histórico fica a cargo do service de atualização de Produto/Módulo/Variante em Application (não trigger de banco) — mantém a regra visível em código e testável.
+Gravação do histórico fica a cargo do service de atualização de `ProdutoPrecoUnidade`/`Modulo`/`ModuloVariante` em Application (não trigger de banco) — mantém a regra visível em código e testável.
 
 ## Autenticação e autorização
 
