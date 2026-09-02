@@ -28,6 +28,9 @@ public static class DependencyInjection
         services.AddScoped<Domain.Repositories.IRevendaRepository, Repositories.RevendaRepository>();
         services.AddScoped<Application.Revendas.RevendaService>();
 
+        services.AddScoped<Domain.Repositories.IClienteRepository, Repositories.ClienteRepository>();
+        services.AddScoped<Application.Clientes.ClienteService>();
+
         return services;
     }
 }
