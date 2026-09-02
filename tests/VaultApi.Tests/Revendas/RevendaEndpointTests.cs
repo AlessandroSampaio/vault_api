@@ -29,11 +29,11 @@ public class RevendaEndpointTests(PostgresFixture postgres)
         using var client = factory.CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        var createResponse = await client.PostAsJsonAsync("/revendas", new { nome = "Revenda Teste", cnpj = "00000000000100" });
+        var createResponse = await client.PostAsJsonAsync("/revendas", new { razaoSocial = "Revenda Teste", cnpj = "00000000000100" });
         createResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
         var listResponse = await client.GetFromJsonAsync<List<RevendaDto>>("/revendas");
-        listResponse.Should().ContainSingle(r => r.Nome == "Revenda Teste");
+        listResponse.Should().ContainSingle(r => r.RazaoSocial == "Revenda Teste");
     }
 
     [Fact]
@@ -53,9 +53,9 @@ public class RevendaEndpointTests(PostgresFixture postgres)
         using var client = factory.CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        var response = await client.PostAsJsonAsync("/revendas", new { nome = "X", cnpj = "1" });
+        var response = await client.PostAsJsonAsync("/revendas", new { razaoSocial = "X", cnpj = "1" });
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
-    private record RevendaDto(Guid Id, string Nome, string Cnpj, bool Ativo);
+    private record RevendaDto(Guid Id, string RazaoSocial, string Cnpj, bool Ativo);
 }

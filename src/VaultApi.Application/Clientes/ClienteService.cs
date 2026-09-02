@@ -8,10 +8,28 @@ public class ClienteService(IClienteRepository repository)
 {
     public async Task<ClienteResponse> CriarAsync(CriarClienteRequest request)
     {
-        var cliente = new Cliente { Id = Guid.NewGuid(), Nome = request.Nome, Cnpj = request.Cnpj, RevendaId = request.RevendaId };
+        var cliente = new Cliente
+        {
+            Id = Guid.NewGuid(),
+            RazaoSocial = request.RazaoSocial,
+            NomeFantasia = request.NomeFantasia,
+            Cnpj = request.Cnpj,
+            RevendaId = request.RevendaId,
+            Cep = request.Cep,
+            Logradouro = request.Logradouro,
+            Numero = request.Numero,
+            Complemento = request.Complemento,
+            Bairro = request.Bairro,
+            Cidade = request.Cidade,
+            Estado = request.Estado,
+            Email = request.Email,
+            Telefone = request.Telefone,
+            Whatsapp = request.Whatsapp,
+            Responsavel = request.Responsavel
+        };
         await repository.AddAsync(cliente);
         await repository.SaveChangesAsync();
-        return new ClienteResponse(cliente.Id, cliente.Nome, cliente.Cnpj, cliente.RevendaId);
+        return ToResponse(cliente);
     }
 
     public async Task<List<ClienteResponse>> ListarAsync(ScopeResult scope)
@@ -24,6 +42,11 @@ public class ClienteService(IClienteRepository repository)
         };
 
         var clientes = await repository.ListAsync(semRestricao, revendaId);
-        return clientes.Select(c => new ClienteResponse(c.Id, c.Nome, c.Cnpj, c.RevendaId)).ToList();
+        return clientes.Select(ToResponse).ToList();
     }
+
+    private static ClienteResponse ToResponse(Cliente c) => new(
+        c.Id, c.RazaoSocial, c.NomeFantasia, c.Cnpj, c.RevendaId,
+        c.Cep, c.Logradouro, c.Numero, c.Complemento, c.Bairro, c.Cidade, c.Estado,
+        c.Email, c.Telefone, c.Whatsapp, c.Responsavel, c.CriadoEm);
 }

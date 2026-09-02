@@ -26,7 +26,7 @@ public class ContratoPersistenceTests(PostgresFixture postgres)
         var moduloId = Guid.NewGuid();
         await using (var db = new AppDbContext(options))
         {
-            db.Set<Cliente>().Add(new Cliente { Id = clienteId, Nome = "Cliente", Cnpj = "1", RevendaId = null });
+            db.Set<Cliente>().Add(new Cliente { Id = clienteId, RazaoSocial = "Cliente", Cnpj = "1", RevendaId = null });
             db.Set<Produto>().Add(new Produto { Id = produtoId, Nome = "P", Descricao = "D", Ativo = true });
             db.Set<Modulo>().Add(new Modulo { Id = moduloId, ProdutoId = produtoId, Nome = "TEF", Ativo = true });
             await db.SaveChangesAsync();

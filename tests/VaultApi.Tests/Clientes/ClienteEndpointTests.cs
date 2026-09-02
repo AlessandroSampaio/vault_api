@@ -28,17 +28,17 @@ public class ClienteEndpointTests(PostgresFixture postgres)
         using var client = factory.CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        var matrizResponse = await client.PostAsJsonAsync("/clientes", new { nome = "Cliente Matriz", cnpj = "1", revendaId = (Guid?)null });
+        var matrizResponse = await client.PostAsJsonAsync("/clientes", new { razaoSocial = "Cliente Matriz", cnpj = "1", revendaId = (Guid?)null });
         matrizResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
         var revendaId = Guid.NewGuid();
         await using (var db = new AppDbContext(options))
         {
-            db.Set<VaultApi.Domain.Entities.Revenda>().Add(new VaultApi.Domain.Entities.Revenda { Id = revendaId, Nome = "R1", Cnpj = "2", Ativo = true });
+            db.Set<VaultApi.Domain.Entities.Revenda>().Add(new VaultApi.Domain.Entities.Revenda { Id = revendaId, RazaoSocial = "R1", Cnpj = "2", Ativo = true });
             await db.SaveChangesAsync();
         }
 
-        var comRevendaResponse = await client.PostAsJsonAsync("/clientes", new { nome = "Cliente Revenda", cnpj = "3", revendaId });
+        var comRevendaResponse = await client.PostAsJsonAsync("/clientes", new { razaoSocial = "Cliente Revenda", cnpj = "3", revendaId });
         comRevendaResponse.StatusCode.Should().Be(HttpStatusCode.Created);
     }
 }

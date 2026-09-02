@@ -28,12 +28,12 @@ public class ClienteScopeEndpointTests(PostgresFixture postgres)
         await using (var db = new AppDbContext(options))
         {
             db.Set<Revenda>().AddRange(
-                new Revenda { Id = revendaA, Nome = "A", Cnpj = "1", Ativo = true },
-                new Revenda { Id = revendaB, Nome = "B", Cnpj = "2", Ativo = true });
+                new Revenda { Id = revendaA, RazaoSocial = "A", Cnpj = "1", Ativo = true },
+                new Revenda { Id = revendaB, RazaoSocial = "B", Cnpj = "2", Ativo = true });
             db.Set<Cliente>().AddRange(
-                new Cliente { Id = Guid.NewGuid(), Nome = "Cliente A", Cnpj = "10", RevendaId = revendaA },
-                new Cliente { Id = Guid.NewGuid(), Nome = "Cliente B", Cnpj = "20", RevendaId = revendaB },
-                new Cliente { Id = Guid.NewGuid(), Nome = "Cliente Matriz", Cnpj = "30", RevendaId = null });
+                new Cliente { Id = Guid.NewGuid(), RazaoSocial = "Cliente A", Cnpj = "10", RevendaId = revendaA },
+                new Cliente { Id = Guid.NewGuid(), RazaoSocial = "Cliente B", Cnpj = "20", RevendaId = revendaB },
+                new Cliente { Id = Guid.NewGuid(), RazaoSocial = "Cliente Matriz", Cnpj = "30", RevendaId = null });
             await db.SaveChangesAsync();
         }
 
@@ -44,8 +44,8 @@ public class ClienteScopeEndpointTests(PostgresFixture postgres)
 
         var clientes = await client.GetFromJsonAsync<List<ClienteDto>>("/clientes");
 
-        clientes.Should().ContainSingle().Which.Nome.Should().Be("Cliente A");
+        clientes.Should().ContainSingle().Which.RazaoSocial.Should().Be("Cliente A");
     }
 
-    private record ClienteDto(Guid Id, string Nome, string Cnpj, Guid? RevendaId);
+    private record ClienteDto(Guid Id, string RazaoSocial, string Cnpj, Guid? RevendaId);
 }

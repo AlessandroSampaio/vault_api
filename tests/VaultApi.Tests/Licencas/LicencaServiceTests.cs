@@ -33,7 +33,7 @@ public class LicencaServiceTests(PostgresFixture postgres)
 
         await using (var db = new AppDbContext(options))
         {
-            db.Set<Cliente>().Add(new Cliente { Id = Guid.NewGuid(), Nome = "C", Cnpj = "1", RevendaId = null });
+            db.Set<Cliente>().Add(new Cliente { Id = Guid.NewGuid(), RazaoSocial = "C", Cnpj = "1", RevendaId = null });
             await db.SaveChangesAsync();
         }
 

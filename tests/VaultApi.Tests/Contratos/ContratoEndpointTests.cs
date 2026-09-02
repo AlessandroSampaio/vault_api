@@ -29,8 +29,8 @@ public class ContratoEndpointTests(PostgresFixture postgres)
         var produtoId = Guid.NewGuid();
         await using (var db = new AppDbContext(options))
         {
-            db.Set<Revenda>().Add(new Revenda { Id = revendaId, Nome = "R", Cnpj = "1", Ativo = true });
-            db.Set<Cliente>().Add(new Cliente { Id = clienteId, Nome = "C", Cnpj = "2", RevendaId = revendaId });
+            db.Set<Revenda>().Add(new Revenda { Id = revendaId, RazaoSocial = "R", Cnpj = "1", Ativo = true });
+            db.Set<Cliente>().Add(new Cliente { Id = clienteId, RazaoSocial = "C", Cnpj = "2", RevendaId = revendaId });
             db.Set<Produto>().Add(new Produto
             {
                 Id = produtoId, Nome = "P", Descricao = "D", Ativo = true,
