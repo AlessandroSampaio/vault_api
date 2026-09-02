@@ -16,3 +16,5 @@ obj\\Debug/
 
 ## OS
 .DS_Store
+
+appsettings.json
