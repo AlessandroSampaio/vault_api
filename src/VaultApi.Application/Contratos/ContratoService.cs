@@ -5,7 +5,7 @@ using VaultApi.Domain.Repositories;
 
 namespace VaultApi.Application.Contratos;
 
-public class ContratoService(IContratoRepository contratoRepository, IProdutoRepository produtoRepository)
+public class ContratoService(IContratoRepository contratoRepository, IProdutoRepository produtoRepository, Licencas.LicencaService licencaService)
 {
     public async Task<ContratoAdminResponse> CriarAsync(CriarContratoRequest request)
     {
@@ -30,6 +30,11 @@ public class ContratoService(IContratoRepository contratoRepository, IProdutoRep
         }
 
         var contrato = new Contrato { Id = contratoId, ClienteId = request.ClienteId, RevendaId = request.RevendaId, Ativo = true, DataInicio = request.DataInicio, Itens = itens };
+
+        foreach (var item in itens)
+        {
+            await licencaService.EmitirNovaVersaoAsync(item);
+        }
 
         await contratoRepository.AddAsync(contrato);
         await contratoRepository.SaveChangesAsync();
