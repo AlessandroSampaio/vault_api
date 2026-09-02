@@ -13,6 +13,14 @@ public static class DependencyInjection
             .UseNpgsql(configuration.GetConnectionString("Default"))
             .UseSnakeCaseNamingConvention());
 
+        services.AddIdentityCore<Domain.Entities.Usuario>(options =>
+            {
+                options.Password.RequireNonAlphanumeric = false;
+                options.User.RequireUniqueEmail = true;
+            })
+            .AddRoles<Microsoft.AspNetCore.Identity.IdentityRole<Guid>>()
+            .AddEntityFrameworkStores<Persistence.AppDbContext>();
+
         return services;
     }
 }
