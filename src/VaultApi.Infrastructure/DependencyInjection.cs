@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,7 +20,10 @@ public static class DependencyInjection
                 options.User.RequireUniqueEmail = true;
             })
             .AddRoles<Microsoft.AspNetCore.Identity.IdentityRole<Guid>>()
+            .AddSignInManager()
             .AddEntityFrameworkStores<Persistence.AppDbContext>();
+
+        services.AddScoped<Application.Abstractions.ITokenService, Auth.TokenService>();
 
         return services;
     }
