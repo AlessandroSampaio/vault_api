@@ -31,6 +31,8 @@ public static class DependencyInjection
         services.AddScoped<Domain.Repositories.IClienteRepository, Repositories.ClienteRepository>();
         services.AddScoped<Application.Clientes.ClienteService>();
 
+        services.AddScoped<Application.Abstractions.IScopeFilter, Application.Scope.ScopeFilter>();
+
         return services;
     }
 }

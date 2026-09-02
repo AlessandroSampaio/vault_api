@@ -32,6 +32,9 @@ builder.Services.AddAuthorization(options =>
             nameof(VaultApi.Domain.Enums.Nivel.Usuario)));
 });
 
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<VaultApi.Application.Abstractions.ICurrentUser, VaultApi.Api.Auth.CurrentUser>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
