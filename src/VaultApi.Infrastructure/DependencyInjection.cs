@@ -37,6 +37,8 @@ public static class DependencyInjection
         services.AddScoped<Domain.Repositories.IHistoricoPrecoCatalogoRepository, Repositories.HistoricoPrecoCatalogoRepository>();
         services.AddScoped<Application.Catalogo.CatalogoService>();
 
+        services.AddScoped<Domain.Repositories.IContratoRepository, Repositories.ContratoRepository>();
+
         return services;
     }
 }
