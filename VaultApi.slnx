@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="src/VaultApi.Domain/VaultApi.Domain.csproj" />
+  <Project Path="src/VaultApi.Application/VaultApi.Application.csproj" />
+  <Project Path="src/VaultApi.Infrastructure/VaultApi.Infrastructure.csproj" />
+  <Project Path="src/VaultApi.Api/VaultApi.Api.csproj" />
+  <Project Path="tests/VaultApi.Tests/VaultApi.Tests.csproj" />
+</Solution>
