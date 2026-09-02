@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using VaultApi.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -42,6 +43,10 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<VaultApi.Infrastructure.Persistence.AppDbContext>();
+    await db.Database.MigrateAsync();
 }
 
 app.UseHttpsRedirection();
