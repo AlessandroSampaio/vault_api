@@ -21,7 +21,16 @@ builder.Services
                 System.Text.Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
         };
     });
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy(VaultApi.Api.Auth.PolicyNames.RequireAdmin, policy =>
+        policy.RequireClaim("nivel", nameof(VaultApi.Domain.Enums.Nivel.Admin)));
+    options.AddPolicy(VaultApi.Api.Auth.PolicyNames.RequireRevendaOrAdmin, policy =>
+        policy.RequireClaim("nivel",
+            nameof(VaultApi.Domain.Enums.Nivel.Admin),
+            nameof(VaultApi.Domain.Enums.Nivel.Revenda),
+            nameof(VaultApi.Domain.Enums.Nivel.Usuario)));
+});
 
 var app = builder.Build();
 

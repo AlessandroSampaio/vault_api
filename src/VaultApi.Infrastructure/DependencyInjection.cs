@@ -25,6 +25,9 @@ public static class DependencyInjection
 
         services.AddScoped<Application.Abstractions.ITokenService, Auth.TokenService>();
 
+        services.AddScoped<Domain.Repositories.IRevendaRepository, Repositories.RevendaRepository>();
+        services.AddScoped<Application.Revendas.RevendaService>();
+
         return services;
     }
 }
