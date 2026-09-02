@@ -33,6 +33,9 @@ public static class DependencyInjection
 
         services.AddScoped<Application.Abstractions.IScopeFilter, Application.Scope.ScopeFilter>();
 
+        services.AddScoped<Domain.Repositories.IProdutoRepository, Repositories.ProdutoRepository>();
+        services.AddScoped<Application.Catalogo.CatalogoService>();
+
         return services;
     }
 }
