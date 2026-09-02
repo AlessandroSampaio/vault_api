@@ -40,7 +40,7 @@ public class CatalogoService(IProdutoRepository repository, IHistoricoPrecoCatal
                 .Select(v => new ModuloVariante { Id = Guid.NewGuid(), Nome = v.Nome, TipoUnidadeAplicavel = v.TipoUnidadeAplicavel, ValorAdicionalPorUnidade = v.ValorAdicionalPorUnidade })
                 .ToList()
         };
-        produto.Modulos.Add(modulo);
+        await repository.AddModuloAsync(modulo);
 
         await repository.SaveChangesAsync();
         return new ModuloResponse(modulo.Id, modulo.Nome, modulo.ValorAdesaoBase, modulo.ValorMensalidadeBase, modulo.Ativo,
