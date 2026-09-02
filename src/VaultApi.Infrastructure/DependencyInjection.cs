@@ -34,6 +34,7 @@ public static class DependencyInjection
         services.AddScoped<Application.Abstractions.IScopeFilter, Application.Scope.ScopeFilter>();
 
         services.AddScoped<Domain.Repositories.IProdutoRepository, Repositories.ProdutoRepository>();
+        services.AddScoped<Domain.Repositories.IHistoricoPrecoCatalogoRepository, Repositories.HistoricoPrecoCatalogoRepository>();
         services.AddScoped<Application.Catalogo.CatalogoService>();
 
         return services;

@@ -1,9 +1,10 @@
 using VaultApi.Domain.Entities;
+using VaultApi.Domain.Enums;
 using VaultApi.Domain.Repositories;
 
 namespace VaultApi.Application.Catalogo;
 
-public class CatalogoService(IProdutoRepository repository)
+public class CatalogoService(IProdutoRepository repository, IHistoricoPrecoCatalogoRepository historicoRepository)
 {
     public async Task<ProdutoResponse> CriarProdutoAsync(CriarProdutoRequest request)
     {
@@ -50,6 +51,39 @@ public class CatalogoService(IProdutoRepository repository)
     {
         var produto = await repository.GetAsync(id);
         return produto is null ? null : ToResponse(produto);
+    }
+
+    public async Task AtualizarPrecoUnidadeAsync(Guid produtoId, TipoUnidade tipoUnidade, decimal novoValorAdesao, decimal novoValorMensalidade, Guid usuarioId)
+    {
+        var produto = await repository.GetAsync(produtoId) ?? throw new KeyNotFoundException("Produto nao encontrado.");
+        var preco = produto.PrecosPorUnidade.SingleOrDefault(p => p.TipoUnidade == tipoUnidade)
+            ?? throw new KeyNotFoundException("Preco por unidade nao encontrado para este produto.");
+
+        var agora = DateTimeOffset.UtcNow;
+
+        if (preco.ValorAdesao != novoValorAdesao)
+        {
+            await historicoRepository.AddAsync(new HistoricoPrecoCatalogo
+            {
+                Id = Guid.NewGuid(), EntidadeTipo = EntidadeTipoCatalogo.ProdutoPrecoUnidade, EntidadeId = preco.Id,
+                TipoValor = TipoValorCatalogo.Adesao, ValorAnterior = preco.ValorAdesao, ValorNovo = novoValorAdesao,
+                DataAlteracao = agora, UsuarioId = usuarioId
+            });
+            preco.ValorAdesao = novoValorAdesao;
+        }
+
+        if (preco.ValorMensalidade != novoValorMensalidade)
+        {
+            await historicoRepository.AddAsync(new HistoricoPrecoCatalogo
+            {
+                Id = Guid.NewGuid(), EntidadeTipo = EntidadeTipoCatalogo.ProdutoPrecoUnidade, EntidadeId = preco.Id,
+                TipoValor = TipoValorCatalogo.Mensalidade, ValorAnterior = preco.ValorMensalidade, ValorNovo = novoValorMensalidade,
+                DataAlteracao = agora, UsuarioId = usuarioId
+            });
+            preco.ValorMensalidade = novoValorMensalidade;
+        }
+
+        await repository.SaveChangesAsync();
     }
 
     private static ProdutoResponse ToResponse(Produto produto) => new(

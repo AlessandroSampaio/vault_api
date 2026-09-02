@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using VaultApi.Api.Auth;
+using VaultApi.Application.Abstractions;
 using VaultApi.Application.Catalogo;
 
 namespace VaultApi.Api.Controllers;
@@ -8,7 +9,7 @@ namespace VaultApi.Api.Controllers;
 [ApiController]
 [Route("produtos")]
 [Authorize]
-public class CatalogoController(CatalogoService service) : ControllerBase
+public class CatalogoController(CatalogoService service, ICurrentUser currentUser) : ControllerBase
 {
     [HttpPost]
     [Authorize(Policy = PolicyNames.RequireAdmin)]
@@ -32,5 +33,16 @@ public class CatalogoController(CatalogoService service) : ControllerBase
     {
         var produto = await service.ObterProdutoAsync(id);
         return produto is null ? NotFound() : Ok(produto);
+    }
+
+    public record AtualizarPrecoUnidadeRequest(VaultApi.Domain.Enums.TipoUnidade TipoUnidade, decimal ValorAdesao, decimal ValorMensalidade);
+
+    [HttpPatch("{id:guid}/precos")]
+    [Authorize(Policy = PolicyNames.RequireAdmin)]
+    public async Task<IActionResult> AtualizarPreco(Guid id, AtualizarPrecoUnidadeRequest request)
+    {
+        await service.AtualizarPrecoUnidadeAsync(id, request.TipoUnidade, request.ValorAdesao, request.ValorMensalidade,
+            Guid.Parse(User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)!.Value));
+        return NoContent();
     }
 }
