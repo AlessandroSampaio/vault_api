@@ -4,6 +4,12 @@ obj/
 *.user
 .vs/
 
+## dotnet-ef on macOS sometimes emits a literal "bin\Debug" / "obj\Debug"
+## directory (backslash as part of the name, not a path separator) instead
+## of bin/Debug — escape the backslash so gitignore matches it literally.
+bin\\Debug/
+obj\\Debug/
+
 ## Rider/VS Code
 .idea/
 .vscode/
