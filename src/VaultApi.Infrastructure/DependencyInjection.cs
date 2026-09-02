@@ -38,6 +38,7 @@ public static class DependencyInjection
         services.AddScoped<Application.Catalogo.CatalogoService>();
 
         services.AddScoped<Domain.Repositories.IContratoRepository, Repositories.ContratoRepository>();
+        services.AddScoped<Application.Contratos.ContratoService>();
 
         return services;
     }
